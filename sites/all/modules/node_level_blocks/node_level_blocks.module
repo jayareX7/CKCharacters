@@ -1,0 +1,306 @@
+<?php
+
+/**
+ * @file
+ * Allows node editors to assign blocks to regions on a node base.
+ *
+ * @name Node-level Blocks
+ * @author skilip
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function node_level_blocks_permission() {
+  return array(
+    'administer node_level_blocks' => array(
+      'title' => t('Administer Node-level Blocks'),
+      'description' => t('Administer Node-level Blocks'),
+    ),
+    'edit node_level_blocks' => array(
+      'title' => t('Edit Node-level Blocks'),
+      'description' => t('Edit Node-level Blocks'),
+    ),
+    'edit all node_level_blocks' => array(
+      'title' => t('Edit ALL Node-level Blocks'),
+      'description' => t('Edit even those blocks that require extra permission to move across regions.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_node_load().
+ */
+function node_level_blocks_node_load($nodes) {
+  foreach ($nodes as $node) {
+    $nid = !empty($node->nid) ? $node->nid : 0;
+
+    $nodes[$nid]->node_level_blocks = array(
+      'settings' => node_level_blocks_node_type_settings($node->type)
+    );
+    if ($nodes[$nid]->node_level_blocks['settings']->enabled) {
+      $nodes[$nid]->node_level_blocks['blocks'] = node_level_blocks_node_load_blocks($node);
+    }
+  }
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function node_level_blocks_node_update($node) {
+  node_level_blocks_node_save_blocks($node);
+}
+
+/**
+ * Implements hook_node_insert().
+ */
+function node_level_blocks_node_insert($node) {
+  node_level_blocks_node_save_blocks($node);
+}
+
+/**
+ * Implements hook_theme().
+ */
+function node_level_blocks_theme() {
+  $template_path = drupal_get_path('module', 'node_level_blocks') . '/templates';
+  return array(
+    'node_level_blocks_fieldset' => array(
+      'template' => 'node_level_blocks-fieldset',
+      'render element' => 'form',
+      'path' => $template_path,
+      'file' => 'node_level_blocks.theme.inc',
+    ),
+  );
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for node_form().
+ */
+function node_level_blocks_form_node_form_alter(&$form, &$form_state) {
+  // Add a fieldset to the node type form in which admins can enable or disable node_level_blocks per content type.
+  form_load_include($form_state, 'inc', 'node_level_blocks', 'includes/node_level_blocks.admin');
+  node_level_blocks_node_form($form, $form_state);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for node_type_form().
+ */
+function node_level_blocks_form_node_type_form_alter(&$form, &$form_state) {
+  // Add a fieldset to the node type form in which admins can enable or disable node_level_blocks per content type.
+  form_load_include($form_state, 'inc', 'node_level_blocks', 'includes/node_level_blocks.admin');
+  node_level_blocks_node_type_form($form, $form_state);
+}
+
+/**
+ * Saves block - region relations for a given node page.
+ */
+function node_level_blocks_node_save_blocks($node) {
+  // Check if NLB is enabled for this node.
+  if (empty($node->node_level_blocks['settings']->enabled)) {
+    return;
+  }
+
+  $node_level_blocks_blocks = $node->node_level_blocks['blocks'];
+
+  // Copy NLB of other languages.
+  if (isset($node->original->node_level_blocks['blocks'])) {
+    $node_level_blocks_blocks += $node->original->node_level_blocks['blocks'];
+  }
+
+  foreach ($node_level_blocks_blocks as $language => $blocks) {
+    if ($node->is_new) {
+      $language = $node->language;
+    }
+
+    // Delete old entries for this node.
+    db_delete('node_level_blocks')
+      ->condition('nid', $node->nid)
+      ->condition('vid', $node->vid)
+      ->condition('language', $language)
+      ->execute();
+
+    foreach ($blocks as $block) {
+      $block = (object) $block;
+      if ($block->region != BLOCK_REGION_NONE) {
+        db_insert('node_level_blocks')
+          ->fields(array(
+            'nid' => $node->nid,
+            'vid' => $node->vid,
+            'language' => $language,
+            'moddelta' => $block->moddelta,
+            'region' => $block->region,
+            'weight' => $block->weight,
+          ))
+          ->execute();
+      }
+    }
+  }
+}
+
+/**
+ * Loads all blocks associated with the node of the given nid.
+ */
+function node_level_blocks_node_load_blocks($node) {
+  // Get all blocks from nlb table.
+  $query = db_select('node_level_blocks', 'nlb');
+  $query->fields('nlb', array('moddelta', 'region', 'weight', 'language'));
+  $query->condition('nlb.nid', $node->nid);
+  $query->condition('nlb.vid', $node->vid);
+  $query->orderBy('nlb.weight');
+  $loaded_blocks = $query->execute()->fetchAll();
+
+  // But get their titles from the block table. Get all blocks, from all modules and
+  // themes? Could do a CONCAT(mod+delta) IN (:moddeltas)....
+  $titles = &drupal_static('node_level_blocks_block_titles', array());
+  if (!$titles) {
+    $titles = db_query("
+      SELECT CONCAT(module, ':', delta) AS moddelta, title
+      FROM {block}
+    ")->fetchAllKeyed();
+  }
+
+  $blocks = array();
+  foreach ($loaded_blocks as $block) {
+    list($module, $delta) = explode(':', $block->moddelta);
+    $block->module = $module;
+    $block->delta = $delta;
+    $block->title = @$titles[$block->moddelta] ?: '';
+
+    $blocks[$block->language][$block->moddelta] = $block;
+  }
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_list_alter().
+ */
+function node_level_blocks_block_list_alter(&$block_list) {
+  // Add the workbench moderation include.
+  if (module_exists('workbench_moderation')) {
+    module_load_include('inc', 'node_level_blocks', 'includes/workbench_moderation');
+  }
+  // Add the node include.
+  module_load_include('inc', 'node_level_blocks', 'includes/node');
+
+  $node = menu_get_object();
+  $current_nodes = array_filter(module_invoke_all('node_level_blocks_current_node', $node));
+  if ($current_nodes) {
+    $node = end($current_nodes);
+  }
+
+  if ($node && isset($node->node_level_blocks)) {
+    $settings = isset($node->node_level_blocks['settings']) ? $node->node_level_blocks['settings'] : node_level_blocks_node_type_settings($node->type);
+
+    if ($settings->enabled && array_filter(module_invoke_all('node_level_blocks_enabled_page', $node, $settings))) {
+      $blocks = $node->node_level_blocks['blocks'];
+      if (!empty($settings->nodeblock)) {
+        foreach ($blocks as $block) {
+          if ($block->module == 'nodeblock') {
+            $nodeblock = nodeblock_load_nodeblock($block->delta);
+            if ($nodeblock && $nodeblock->node_level_blocks['blocks']) {
+              $blocks = array_merge($blocks, $nodeblock->node_level_blocks['blocks']);
+            }
+          }
+        }
+      }
+
+      $langcode = $node->language;
+      if (module_exists('entity_translation') && entity_translation_enabled('node', $node->type)) {
+        global $language_content;
+        $langcode = $language_content->language;
+      }
+
+      if (isset($blocks[$langcode])) {
+        _node_level_blocks_set_blocks($block_list, $blocks[$langcode], $settings);
+      }
+    }
+  }
+}
+
+/**
+ * Helper function to assign blocks to the block_list.
+ */
+function _node_level_blocks_set_blocks(&$block_list, $blocks, $settings) {
+  foreach ($blocks as $moddelta => $block) {
+    if (isset($block->region) && $block->region != -1) {
+      // Add block keys added by other modules (e.g. i18n_block).
+      $block_loaded = block_load($block->module, $block->delta);
+      $ignore_block_keys = array_merge(array_keys((array)$block), array('bid', 'theme', 'status', 'visibility', 'custom', 'pages'));
+      $missing_block_keys = array_diff(array_keys((array)$block_loaded), $ignore_block_keys);
+      foreach ($missing_block_keys as $missing_block_key) {
+        $block->$missing_block_key = $block_loaded->$missing_block_key;
+      }
+
+      // Check if the block is already present in the block list.
+      if (isset($block_list[$moddelta])) {
+        // If settings tell us to allow us to repeat blocks, we'll create a
+        // duplicate only if the regions differ.
+        if (!empty($settings->multi)) {
+          if ($block_list[$moddelta]->region !== $block->region) {
+            $block_list[$moddelta . '-' . $block->region] = $block;
+          }
+          continue;
+        }
+      }
+
+      // If the settings tell us not to duplicate blocks, we'll use the node
+      // level block as leading.
+      $block_list[$moddelta] = $block;
+    }
+  }
+}
+
+/**
+ * Helper function for getting the snipets configuration settings for a node type.
+ */
+function node_level_blocks_node_type_settings($node_type) {
+  $defaults = (object) array(
+    'enabled' => FALSE,
+    'display_node_edit' => FALSE,
+    'multi' => FALSE,
+    'modules' => array('block', 'nodeblock'),
+    'regions' => array('content'),
+  );
+
+  if (module_exists('nodeblock') && nodeblock_type_enabled($node_type)) {
+    $defaults->nodeblock = FALSE;
+  }
+
+  return variable_get('node_level_blocks_enabled_' . $node_type, $defaults);
+}
+
+/**
+ * Helper function for sorting blocks on admin/build/block.
+ *
+ * Active blocks are sorted by region, then by weight.
+ * Disabled blocks are sorted by name.
+ */
+function _node_level_blocks_compare($a, $b) {
+  // Sort by weight.
+  if ($a['weight'] != $b['weight']) {
+    return $a['weight'] - $b['weight'];
+  }
+  // Sort by title.
+  return strcmp($a['info'], $b['info']);
+}
+
+/**
+ * Implements hook_block_usage().
+ */
+function node_level_blocks_block_usage($module, $delta) {
+  $matches = array();
+
+  // Find NLB items.
+  $items = db_query('SELECT nid, region FROM {node_level_blocks} WHERE moddelta = :moddelta', array(
+    ':moddelta' => $module . ':' . $delta,
+  ))->fetchAllKeyed(0, 1);
+
+  // Fetch nodes and collect titles for matches.
+  $nodes = node_load_multiple(array_keys($items));
+  foreach ($nodes as $nid => $node) {
+    $label = t('@title (# @nid)', array('@title' => $node->title, '@nid' => $nid));
+    $matches[] = l($label, 'node/' . $nid) . ' (' . $items[$nid] . ')';
+  }
+
+  return $matches;
+}

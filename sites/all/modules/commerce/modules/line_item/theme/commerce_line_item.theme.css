@@ -1,0 +1,182 @@
+
+/**
+ * @file
+ * Basic styling for the Commerce Line Item module.
+ */
+
+/**
+ * Theme the line item summary.
+ */
+.line-item-summary {
+  text-align: right; /* LTR */
+  margin-bottom: 1em;
+}
+
+.line-item-summary .line-item-quantity {
+  float: left; /* LTR */
+}
+
+.line-item-summary .line-item-total-label {
+  font-weight: bold;
+}
+
+.line-item-summary .links {
+  margin-top: .5em;
+  clear: left; /* LTR */
+}
+
+.line-item-summary .links li.last {
+  padding-right: 0; /* LTR */
+}
+
+/**
+ * Theme the line item views form, used on the cart page.
+ */
+.commerce-line-item-views-form input.delete-line-item {
+  font-size: 0.8em;
+  padding: 1px 6px;
+}
+
+.commerce-line-item-views-form .cart-subtotal {
+  text-align: right; /* LTR */
+  font-size: 1.5em;
+}
+
+.commerce-line-item-views-form .commerce-line-item-actions {
+  text-align: right; /* LTR */
+}
+
+.form-actions,
+.commerce-line-item-actions {
+    bottom: 500px;
+
+}
+
+
+li.line-item-summary-view-cart.first{
+
+
+
+       font-family: 'Montserrat', sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    text-transform: uppercase;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    display: inline-block;
+    line-height: 1.6;
+    letter-spacing: 1px;
+    text-align: center;
+    box-shadow: 0 -3px rgba(0, 0, 0, 0.3) inset;
+    -moz-box-shadow: 0 -3px rgba(0, 0, 0, 0.3) inset;
+    -webkit-box-shadow: 0 -3px rgba(0, 0, 0, 0.3) inset;
+    -o-box-shadow: 0 -3px rgba(0, 0, 0, 0.3) inset;
+    -webkit-transition: all ease .3s;
+    -moz-transition: all ease .3s;
+    -o-transition: all ease .3s;
+    -ms-transition: all ease .3s;
+    transition: all ease .3s;
+    float: left;
+    right: 30px;
+position: relative;
+padding: 5px;
+
+} 
+
+li.line-item-summary-view-cart.first:hover {
+   display: inline-block;
+text-align: center;
+cursor: pointer;
+color: #d8d8d8;
+font-family: 'Montserrat', sans-serif;
+font-weight: 400 !important;
+font-size: 15px;
+overflow: hidden;
+position: relative;
+z-index: 0;
+vertical-align: middle;
+-moz-user-select: none;
+-webkit-user-select: none;
+user-select: none;
+text-decoration: none;
+text-shadow: none;
+border: 0;
+border: 2px solid rgba(255,255,255,.7);
+border-radius: 3px;
+margin-top: 20px;
+margin-bottom: 20px; 
+    float: left;
+    right: 30px;
+position: relative;
+padding: 5px;
+}
+
+
+
+li.line-item-summary-checkout.last{
+
+
+
+        font-family: 'Montserrat', sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    text-transform: uppercase;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    display: inline-block;
+    line-height: 1.6;
+    letter-spacing: 1px;
+    text-align: center;
+    box-shadow: 0 -3px rgba(0, 0, 0, 0.3) inset;
+    -moz-box-shadow: 0 -3px rgba(0, 0, 0, 0.3) inset;
+    -webkit-box-shadow: 0 -3px rgba(0, 0, 0, 0.3) inset;
+    -o-box-shadow: 0 -3px rgba(0, 0, 0, 0.3) inset;
+    -webkit-transition: all ease .3s;
+    -moz-transition: all ease .3s;
+    -o-transition: all ease .3s;
+    -ms-transition: all ease .3s;
+    transition: all ease .3s;
+    float: right;
+    bottom: 34px;
+position: relative;
+padding: 5px;
+
+} 
+
+li.line-item-summary-checkout.last:hover {
+   display: inline-block;
+text-align: center;
+cursor: pointer;
+color: #d8d8d8;
+font-family: 'Montserrat', sans-serif;
+font-weight: 400 !important;
+font-size: 15px;
+overflow: hidden;
+position: relative;
+z-index: 0;
+vertical-align: middle;
+-moz-user-select: none;
+-webkit-user-select: none;
+user-select: none;
+text-decoration: none;
+text-shadow: none;
+border: 0;
+border: 2px solid rgba(255,255,255,.7);
+border-radius: 3px;
+margin-top: 20px;
+margin-bottom: 20px;
+        float: right;
+    bottom: 34px;
+position: relative;
+padding: 5px;
+}

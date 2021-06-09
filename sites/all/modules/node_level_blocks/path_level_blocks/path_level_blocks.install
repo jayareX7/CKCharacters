@@ -1,0 +1,108 @@
+<?php
+
+/**
+ * @file
+ * Installation file and schema definition for
+ * path_level_blocks.module
+ *
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function path_level_blocks_schema() {
+  $schema['path_level_blocks_settings'] = array(
+    'description' => 'The base table for path_level_blocks.module.',
+    'fields' => array(
+      'plbid' => array(
+        'description' => 'The primary identifier for a path level block setting.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'title' => array(
+        'description' => 'Title of this setting.',
+        'type' => 'varchar',
+        'not null' => TRUE,
+        'length' => 128,
+        'default' => '',
+      ),
+      'paths' => array(
+        'description' => 'Paths on which path level blocks should be active.',
+        'type' => 'text',
+        'size' => 'medium',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('plbid'),
+  );
+
+  $schema['path_level_blocks'] = array(
+    'description' => 'The blocks table for path_level_blocks.module.',
+    'fields' => array(
+      'plbid' => array(
+        'description' => 'The primary identifier for a plb setting.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'moddelta' => array(
+        'type' => 'varchar',
+        'length' => 129, // 4 x 32 + 1 should be enough
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'region' => array(
+        'description' => 'The region in which to place the block.',
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'weight' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => FALSE,
+      ),
+    ),
+    'indexes' => array(
+      'plbid' => array('plbid'),
+      'moddelta' => array('moddelta'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Convert bid storage to moddelta storage.
+ */
+function path_level_blocks_update_7200() {
+  db_add_field('path_level_blocks', 'moddelta', array(
+    'type' => 'varchar',
+    'length' => 129, // 4 x 32 + 1 should be enough
+    'not null' => TRUE,
+    'default' => '',
+  ));
+  db_add_index('path_level_blocks', 'moddelta', array('moddelta'));
+
+  db_query("
+    UPDATE {path_level_blocks}
+    SET
+      moddelta = (SELECT CONCAT(module, ':', delta) FROM {block} WHERE bid = {path_level_blocks}.bid)
+    WHERE
+      bid IN (SELECT bid FROM {block})
+  ")->execute();
+
+  db_drop_field('path_level_blocks', 'bid');
+}
+
+/**
+ * Fix a broken permission (administer path level configuration vs administer path level blocks configuration).
+ */
+function path_level_blocks_update_7201() {
+  db_query("UPDATE {role_permission}
+    SET permission = 'administer path level blocks configuration'
+    WHERE permission = 'administer path level configuration'
+  ")->execute();
+}

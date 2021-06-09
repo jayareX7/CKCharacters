@@ -1,0 +1,44 @@
+.panel-2col {
+/*  overflow: hidden;  */
+}
+
+.panel-2col .panel-col-first {
+  float: left;
+  width: 120%;
+}
+* html .panel-2col .panel-col-first {
+  width: 49.9%;
+}
+
+.panel-2col .panel-col-first .inside {
+  margin: 0 .5em 1em 0;
+}
+
+.panel-2col .panel-col-last {
+  float: right;
+  width: 120%;
+   background-image:url(../images/assets/United%20States.png);
+  height: auto;
+  border: 0;
+  outline: 0;
+    position: absolute;
+    bottom: 4%;
+    left: 120%;
+    
+}
+* html .panel-2col .panel-col-last {
+  width: 49.9%;
+}
+
+.panel-2col .panel-col-last .inside {
+  margin: 0 0 1em .5em;
+}
+
+#panels-edit-display .panel-pane,
+#panels-edit-display .helperclass {
+  margin: .5em;
+}
+
+.panel-2col .panel-separator {
+  margin: 0 0 1em 0;
+}

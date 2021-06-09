@@ -1,0 +1,13 @@
+.views-photo-grid-container {
+  position: relative;
+}
+
+.views-photo-grid-item {
+  opacity: 2%;
+    background: #000;
+}
+
+
+.views-photo-grid-container .views-photo-grid-item {
+  position: absolute;
+}

@@ -1,0 +1,10 @@
+name = Cycle
+description = This module makes the jQuery Cycle library available to your Drupal site via the Libraries API module, and it also provides a slideshow field formatter.
+core = 7.x
+
+; Information added by Drupal.org packaging script on 2017-02-25
+version = "7.x-2.x-dev"
+core = "7.x"
+project = "cycle"
+datestamp = "1488065588"
+

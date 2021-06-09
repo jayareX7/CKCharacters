@@ -1,0 +1,180 @@
+<?php
+
+/**
+ * @file
+ * Installation file and schema definition for
+ * node_level_blocks.module
+ *
+ * @author skilip
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function node_level_blocks_schema() {
+  $schema['node_level_blocks'] = array(
+    'description' => 'The base table for node_level_blocks.module.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'The primary identifier for a node.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'description' => 'The revision of the node.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'language' => array(
+        'description' => 'The {languages}.language of this node.',
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'moddelta' => array(
+        'type' => 'varchar',
+        'length' => 129, // 4 x 32 + 1 should be enough
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'region' => array(
+        'description' => 'The region in which to place the block.',
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'weight' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => FALSE,
+      ),
+    ),
+    'indexes' => array(
+      'nid' => array('nid'),
+      'moddelta' => array('moddelta'),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function node_level_blocks_uninstall() {
+  // Delete any variables set by this module.
+  db_delete('variable')
+    ->condition('name', 'node_level_blocks_%', 'LIKE')
+    ->execute();
+}
+
+/**
+ * Convert bid storage to moddelta storage.
+ */
+function node_level_blocks_update_7200() {
+  db_add_field('node_level_blocks', 'moddelta', array(
+    'type' => 'varchar',
+    'length' => 129, // 4 x 32 + 1 should be enough
+    'not null' => TRUE,
+    'default' => '',
+  ));
+  db_add_index('node_level_blocks', 'moddelta', array('moddelta'));
+
+  db_query("
+    UPDATE {node_level_blocks}
+    SET
+      moddelta = (SELECT CONCAT(module, ':', delta) FROM {block} WHERE bid = {node_level_blocks}.bid)
+    WHERE
+      bid IN (SELECT bid FROM {block})
+  ")->execute();
+
+  db_drop_field('node_level_blocks', 'bid');
+}
+
+/**
+ * Remove variables that are not used anymore.
+ */
+function node_level_blocks_update_7201() {
+  db_delete('variable')
+    ->condition('name', 'node_level_blocks_display_node_edit_%', 'LIKE')
+    ->execute();
+  db_delete('variable')
+    ->condition('name', 'node_level_blocks_multi_%', 'LIKE')
+    ->execute();
+  db_delete('variable')
+    ->condition('name', 'node_level_blocks_regions_%', 'LIKE')
+    ->execute();
+  db_delete('variable')
+    ->condition('name', 'node_level_blocks_modules_%', 'LIKE')
+    ->execute();
+}
+
+/**
+ * Add revision and language field and populate.
+ */
+function node_level_blocks_update_7202() {
+  db_add_field('node_level_blocks', 'vid', array(
+    'description' => 'The revision of the node.',
+    'type' => 'int',
+    'not null' => FALSE,
+    'default' => 0
+  ));
+  db_add_field('node_level_blocks', 'language', array(
+    'description' => 'The {languages}.language of this node.',
+    'type' => 'varchar',
+    'length' => 12,
+    'not null' => FALSE,
+    'default' => '',
+  ));
+
+  // Make sure nothing is NULL.
+  db_query('UPDATE {node_level_blocks} nlb '
+    . 'SET nlb.vid = (SELECT vid FROM {node} n WHERE n.nid = nlb.nid), '
+    . 'nlb.language = (SELECT language FROM {node} n WHERE n.nid = nlb.nid) '
+    . 'WHERE nlb.vid = 0');
+
+  // Prevent NULL values.
+  db_change_field('node_level_blocks', 'vid', 'vid', array(
+    'description' => 'The revision of the node.',
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0
+  ));
+  db_change_field('node_level_blocks', 'language', 'language', array(
+    'description' => 'The {languages}.language of this node.',
+    'type' => 'varchar',
+    'length' => 12,
+    'not null' => TRUE,
+    'default' => '',
+  ));
+}
+
+/**
+ * Create entries for each revision.
+ */
+function node_level_blocks_update_7203() {
+  $missing_revisions = db_query('SELECT nr.vid, nr.nid FROM {node_revision} nr LEFT JOIN {node_level_blocks} nlb ON nlb.nid = nr.nid AND nlb.vid = nr.vid WHERE nlb.nid IS NULL AND nr.nid IN (SELECT nid FROM {node_level_blocks})')->fetchAll();
+  foreach ($missing_revisions as $missing_revision) {
+    $node = node_load($missing_revision->nid);
+    if (isset($node->node_level_blocks['blocks'])) {
+      foreach ($node->node_level_blocks['blocks'] as $langcode => $blocks) {
+        foreach ($blocks as $block) {
+          db_insert('node_level_blocks')
+            ->fields(array(
+              'nid' => $node->nid,
+              'vid' => $missing_revision->vid,
+              'language' => $langcode,
+              'moddelta' => $block->moddelta,
+              'region' => $block->region,
+              'weight' => $block->weight,
+            ))
+            ->execute();
+        }
+      }
+    }
+  }
+}

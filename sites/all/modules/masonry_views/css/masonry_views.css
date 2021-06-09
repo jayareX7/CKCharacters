@@ -1,0 +1,20 @@
+.masonry-processed {
+    position: relative;
+    margin: 0 auto;
+    float: left;
+    width: 100%;
+    min-height:1px;
+    padding-right:15px;
+    padding-left:15px;
+    left: 15px;
+}
+
+.masonry-item {
+  width: 30%;
+  background-color: none;
+  margin: 0.4%;
+ 
+}
+
+
+
